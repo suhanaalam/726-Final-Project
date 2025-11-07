@@ -7,6 +7,7 @@ Specifically, this replication reproduces Columns (1)–(4) of Table 2 (DiD spec
 - `replication.do` — Runs the replication.
 - `moservoena_replication.csv` — Minimal dataset containing only the variables required to estimate Tables 2 and 3.
 - `replication.log` — Example output log (optional reference).
+- '726_Replication.pdf' - LaTeX version of Tables (easier to read and compare to published version)
 
 ## How to Run
 1. Download or clone this repository to your computer.
