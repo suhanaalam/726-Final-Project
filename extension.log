@@ -1,0 +1,302 @@
+--------------------------------------------------------------------------------------------------
+      name:  SA
+       log:  /Users/suhanaalam/Documents/ECO726/Project/extension.log
+  log type:  text
+ opened on:   3 Dec 2025, 16:23:59
+
+. 
+. import delimited "extension_dataset.csv", clear // using new extension csv
+(encoding automatically selected: ISO-8859-1)
+(9 vars, 471,120 obs)
+
+. 
+. * getting an overview of the data
+. summarize
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+      grntyr |    471,120        1907    18.76168       1875       1939
+   count_usa |    471,120    .3497262    1.148123          0         68
+   count_for |    471,120    .1102203    .4857754          0         21
+        main |    471,120    343.1715    219.9445          8        570
+    count_cl |    471,120    .0271905    .2861856          0         15
+-------------+---------------------------------------------------------
+    class_id |    471,120    235592.5    136000.8         65     471120
+       treat |    471,120    .0149771    .1214611          0          1
+count_cl_itt |    471,120    .1372899    .8368513          0         30
+  count_cl_2 |    471,120    .0826414    1.991645          0        225
+
+. describe
+
+Contains data
+ Observations:       471,120                  
+    Variables:             9                  
+--------------------------------------------------------------------------------------------------
+Variable      Storage   Display    Value
+    name         type    format    label      Variable label
+--------------------------------------------------------------------------------------------------
+grntyr          int     %8.0g                 
+count_usa       byte    %8.0g                 
+count_for       byte    %8.0g                 
+main            int     %8.0g                 
+count_cl        byte    %8.0g                 
+class_id        long    %12.0g                
+treat           byte    %8.0g                 
+count_cl_itt    byte    %8.0g                 
+count_cl_2      int     %8.0g                 
+--------------------------------------------------------------------------------------------------
+Sorted by: 
+     Note: Dataset has changed since last saved.
+
+. 
+. * creating the post-policy indicator/dummy variable
+. gen post1919 = (grntyr>=1919) // checks if year is 1919 (pre treatment) or later
+
+. label var post1919 "Post-1919 indicator"
+
+. 
+. tab post1919
+
+  Post-1919 |
+  indicator |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          0 |    318,912       67.69       67.69
+          1 |    152,208       32.31      100.00
+------------+-----------------------------------
+      Total |    471,120      100.00
+
+. 
+. * creating DiD interaction variable
+. gen did = treat * post1919 // equals 1 only for treated subclasses after 1919
+
+. label var did "Treated x Post-1919 interaction" // measures policy's causal effect
+
+. 
+. tab treat post1919, summarize(did) // check to verify pattern
+
+                Means, Standard Deviations and Frequencies
+                    of Treated x Post-1919 interaction
+
+           | Post-1919 indicator
+     treat |         0          1 |     Total
+-----------+----------------------+----------
+         0 |         0          0 |         0
+           |         0          0 |         0
+           |    318912     145152 |    464064
+-----------+----------------------+----------
+         1 |         .          1 |         1
+           |         .          0 |         0
+           |         0       7056 |      7056
+-----------+----------------------+----------
+     Total |         0  .04635762 | .01497708
+           |         0  .21025907 | .12146108
+           |    318912     152208 |    471120
+
+. 
+. * setting up the panel to match table 2
+. xtset class_id grntyr // each subclass over yrs
+
+Panel variable: class_id (strongly balanced)
+ Time variable: grntyr, 1875 to 1939
+         Delta: 1 unit
+
+. 
+. *=========================== BEGINNING REGRESSIONS ============================*
+. 
+. * checking how many sub-industries there are
+. tab main
+
+       main |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          8 |     26,910        5.71        5.71
+         74 |     48,880       10.38       16.09
+        101 |     37,050        7.86       23.95
+        106 |     64,155       13.62       37.57
+        204 |     25,415        5.39       42.96
+        416 |     18,980        4.03       46.99
+        430 |     29,380        6.24       53.23
+        528 |     19,110        4.06       57.28
+        534 |     21,385        4.54       61.82
+        536 |      9,360        1.99       63.81
+        544 |     13,130        2.79       66.60
+        546 |     17,160        3.64       70.24
+        548 |     17,355        3.68       73.92
+        549 |     17,355        3.68       77.61
+        552 |     11,700        2.48       80.09
+        562 |     21,580        4.58       84.67
+        564 |     27,495        5.84       90.51
+        568 |     37,375        7.93       98.44
+        570 |      7,345        1.56      100.00
+------------+-----------------------------------
+      Total |    471,120      100.00
+
+. 
+. * running the DiD separately for each sub-industry (main)
+. statsby _b _se, by(main) clear: ///   // statsby runs DiD for each main class
+>     xtreg count_usa did count_for i.grntyr, fe vce(cluster class_id)
+(running xtreg on estimation sample)
+
+      Command: xtreg count_usa did count_for i.grntyr, fe vce(cluster class_id)
+           By: main
+
+Statsby groups:
+...................
+
+. 
+. * cleaning statsby output - only keeping relevant variables
+. keep main _b_did _se_did
+
+. 
+. * renaming variables
+. rename _b_did did_effect
+
+. rename _se_did did_se
+
+. 
+. * adding labels to variables
+. label var main "Sub-industry (main chemical class)"
+
+. label var did_effect "DiD effect"
+
+. label var did_se "Standard Error"
+
+. 
+. * sorting observations by sub-industry
+. sort main
+
+. 
+. * displaying clean heterogeneity effects
+. list
+
+     +-----------------------------+
+     | main   did_eff~t     did_se |
+     |-----------------------------|
+  1. |    8    .5867221   .1689073 |
+  2. |   74   -.2995194   .2217978 |
+  3. |  101    1.956289   .0457731 |
+  4. |  106    .3775885   .1044386 |
+  5. |  204   -.0664706   .0593881 |
+     |-----------------------------|
+  6. |  416    .6213169   .0435184 |
+  7. |  430    .1845929   .0363146 |
+  8. |  528    .5605526   .1549324 |
+  9. |  534    .2260723   .0408237 |
+ 10. |  536    .3154129   .2097234 |
+     |-----------------------------|
+ 11. |  544    .3916901   .1363294 |
+ 12. |  546    .3206916   .0944633 |
+ 13. |  548    .2066741   .0777453 |
+ 14. |  549    .0260858   .0458498 |
+ 15. |  552    .3403199   .0613429 |
+     |-----------------------------|
+ 16. |  562    .1488538   .0964029 |
+ 17. |  564    .2393788   .1106961 |
+ 18. |  568    .1006517   .0790329 |
+ 19. |  570    .4163771   .3878717 |
+     +-----------------------------+
+
+. 
+. * exporting clean table results/data
+. export delimited using "extension_results.csv", replace
+file extension_results.csv saved
+
+. 
+. *============================= WRITING THE TABLES =============================*
+. 
+. * storing table in estpost to add to log file
+. estpost tabstat did_effect did_se, by(main) nototal
+
+Summary statistics: mean
+     for variables: did_effect did_se
+  by categories of: main
+
+        main | e(did_e~)  e(did_se) 
+-------------+----------------------
+           8 |  .5867221   .1689073 
+          74 | -.2995194   .2217978 
+         101 |  1.956289   .0457731 
+         106 |  .3775885   .1044386 
+         204 | -.0664706   .0593881 
+         416 |  .6213169   .0435184 
+         430 |  .1845929   .0363146 
+         528 |  .5605526   .1549324 
+         534 |  .2260723   .0408237 
+         536 |  .3154129   .2097234 
+         544 |  .3916901   .1363294 
+         546 |  .3206916   .0944633 
+         548 |  .2066741   .0777453 
+         549 |  .0260858   .0458498 
+         552 |  .3403199   .0613429 
+         562 |  .1488538   .0964029 
+         564 |  .2393788   .1106961 
+         568 |  .1006517   .0790329 
+         570 |  .4163771   .3878717 
+
+. 
+. * writing table to log file
+. esttab ., ///
+> unstack ///
+> cell((did_effect(fmt(%9.4f)) did_se(fmt(%9.4f)))) ///
+> nodepvars nobaselevels alignment(r) ///
+> title("Heterogeneous DiD Effects by Sub-Industry") ///
+> collabels("DiD Effect" "Std. Error") ///
+> varlabels(main "Sub-industry") ///
+> nonotes addnotes("Notes: Each row represents a separate DiD regression estimated within a chemic
+> al sub-industry (main class). The dependent variable is U.S. patents per subclass-year. All spec
+> ifications include subclass and grant-year fixed effects, with standard errors clustered at the 
+> subclass level.")
+
+Heterogeneous DiD Effects by Sub-Industry
+--------------------------------------
+                      (1)             
+                        .             
+               DiD Effect   Std. Error
+--------------------------------------
+8                  0.5867       0.1689
+74                -0.2995       0.2218
+101                1.9563       0.0458
+106                0.3776       0.1044
+204               -0.0665       0.0594
+416                0.6213       0.0435
+430                0.1846       0.0363
+528                0.5606       0.1549
+534                0.2261       0.0408
+536                0.3154       0.2097
+544                0.3917       0.1363
+546                0.3207       0.0945
+548                0.2067       0.0777
+549                0.0261       0.0458
+552                0.3403       0.0613
+562                0.1489       0.0964
+564                0.2394       0.1107
+568                0.1007       0.0790
+570                0.4164       0.3879
+--------------------------------------
+N                      19             
+--------------------------------------
+Notes: Each row represents a separate DiD regression estimated within a chemical sub-industry (mai
+> n class). The dependent variable is U.S. patents per subclass-year. All specifications include s
+> ubclass and grant-year fixed effects, with standard errors clustered at the subclass level.
+
+. 
+. * writing table to LaTex
+. esttab using "Extension_Table.tex", ///
+> replace ///
+> booktabs ///
+> cell((did_effect(fmt(%9.4f)) did_se(fmt(%9.4f)))) ///
+> collabels("DiD Effect" "Std. Error") ///
+> varlabels(main "Sub-industry (Main Class)") ///
+> nonotes ///
+> alignment(D{.}{.}{-1}) ///
+> varwidth(60) ///
+> title("Heterogeneous DiD Effects by Sub-Industry") ///
+> addnotes("Notes: Each row represents a separate DiD regression estimated within a chemical sub-i
+> ndustry (main class). The dependent variable is U.S. patents per subclass-year. All specificatio
+> ns include subclass and grant-year fixed effects, with standard errors clustered at the subclass
+>  level.")
+(file Extension_Table.tex not found)
+(output written to Extension_Table.tex)
+
+. 
+end of do-file
+
