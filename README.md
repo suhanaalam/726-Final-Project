@@ -1,13 +1,20 @@
-# Replication of Moser & Voena (2012), Tables 2 and 3
+# Replication and Extension of Moser & Voena (2012)
 
 This repository contains a minimal dataset and Stata do-file to replicate key results from "Compulsory Licensing: Evidence from the Trading with the Enemy Act" (Moser & Voena 2012). 
-Specifically, this replication reproduces Columns (1)–(4) of Table 2 (DiD specifications) and the entirety of Table 3 (ITT specifications).
+Specifically, this replication reproduces Columns (1)–(4) of Table 2 (DiD specifications) and the entirety of Table 3 (ITT specifications). In addition, the repository includes an extension that examines heterogeneity in the effects of compulsory licensing across USPTO chemical sub-industries.
 
 ## Contents
+### Replication
 - `replication.do` — Runs the replication.
 - `moservoena_replication.csv` — Minimal dataset containing only the variables required to estimate Tables 2 and 3.
 - `replication.log` — Example output log (optional reference).
-- '726_Replication.pdf' - LaTeX version of Tables (easier to read and compare to published version)
+- 'Tables.pdf' - LaTeX version of all tables (replication and extension)
+
+### Extension
+- `extension.do` - Runs the extension analysis.
+- `extension_dataset.csv` - Minimal dataset containing only the variables required for the extension analysis.
+- `extension_results.csv` - Output from the extension regressions.
+- `extension.log` - Example output log (optional reference)
 
 ## How to Run
 1. Download or clone this repository to your computer.
@@ -21,5 +28,7 @@ The script loads the minimal dataset, reconstructs the treated × post indicator
 ## Notes
 - The dataset is already restricted to the variables used in the replication.
 - The minimal dataset (`moservoena_replication.csv`) is derived from the original `chem_patents_maindataset.dta` provided for the assignment.
-- All regressions include subclass and grant-year fixed effects, with standard errors clustered at the subclass level, following the specification in Moser & Voena (2012).
+- All replication regressions include subclass and grant-year fixed effects, with standard errors clustered at the subclass level, following Moser & Voena (2012).
+- The extension analysis uses a separate minimal dataset (`extension_dataset.csv`), also derived from the original `chem_patents_maindataset.dta`, and estimates heterogeneous treatment effects across USPTO chemical sub-industries using difference-in-differences specifications.
+
 
